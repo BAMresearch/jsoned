@@ -1,7 +1,5 @@
-#backend\main.py
-
-
-# main.py
+# backend\main.py
+# #################################################################################
 # SECTION 001: Basic CRUD operations for version management
 # This section demonstrates GET, POST, DELETE, and a custom "show" function.
 
@@ -47,3 +45,33 @@ def show_version_data():
     Useful for teaching how to return structured data.
     """
     return {"count": len(database), "versions": database}
+
+
+# #################################################################################
+# SECTION 002: Other HTTP methods (PUT, PATCH)
+from backend.model import UpdateSchema
+
+@app.put("/version/{version_id}")
+def alter_version(version_id: str, schema: SchemaDefinition):
+    """
+    PUT: Replace an existing version completely.
+    """
+    for idx, item in enumerate(database):
+        if item.id == version_id:
+            database[idx] = schema
+            return {"message": "Version replaced", "version": schema}
+    return {"error": "Version not found"}
+
+@app.patch("/version/{version_id}")
+def update_version(version_id: str, updates: UpdateSchema):
+    """
+    PATCH: Update specific fields of a version.
+    """
+    for item in database:
+        if item.id == version_id:
+            if updates.name:
+                item.name = updates.name
+            if updates.version:
+                item.version = updates.version
+            return {"message": "Version updated", "version": item}
+    return {"error": "Version not found"}
