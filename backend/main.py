@@ -12,6 +12,12 @@ app = FastAPI(title="Farm Project API")
 # In-memory database for teaching purposes
 database: List[SchemaDefinition] = []
 
+
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to Farm Project API"}
+
+
 @app.get("/version")
 def get_versions():
     """
