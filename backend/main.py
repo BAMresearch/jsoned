@@ -9,6 +9,19 @@ from typing import List
 
 app = FastAPI(title="Farm Project API")
 
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # For teaching, allow all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, PUT, DELETE, etc.)
+    allow_headers=["*"],  # Allow all headers
+)
+
+
+
+
 # In-memory database for teaching purposes
 database: List[SchemaDefinition] = []
 
