@@ -275,13 +275,7 @@ db = client.jsoned_db
 
 ***
 
-## ✅ Learning Tasks
 
-1.  Add a form in React to create a new schema
-2.  Add delete button
-3.  Persist data in MongoDB
-
-***
 
 ## ✅ Resources
 
