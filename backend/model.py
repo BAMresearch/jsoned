@@ -1,17 +1,21 @@
 #backend\model.py
+#Defines auxiliary or update models (e.g., UpdateSchema) for partial updates or specialized requests.
+"""### ✅ Best Practice for Large Projects - A common structure for FastAPI projects:
 
-# model.py
-# SECTION 002: Other HTTP methods and example models
-# Demonstrates PUT and PATCH for teaching purposes.
-
+    backend/
+    ├── main.py
+    ├── database.py
+    ├── models/          # Folder for all models
+    │   ├── datamodel.py # Core entities
+    │   ├── update.py    # Update/patch models
+    │   ├── user.py      # User-related models
+    │   └── ...
+    ├── routers/         # API routes
+    ├── services/        # Business logic
+    ├── utils/           # Helpers
+"""
 from pydantic import BaseModel
 
 class UpdateSchema(BaseModel):
-    """
-    Represents partial updates for a schema.
-    """
     name: str | None = None
     version: str | None = None
-
-
-
