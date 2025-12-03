@@ -127,6 +127,3 @@ namespaces = false
 [tool.setuptools_scm]
 write_to = "backend/_version.py"
 
-[tool.ruff]
-line-length = 88
-target-version = "py311"
