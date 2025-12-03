@@ -20,3 +20,9 @@ class SchemaDefinition(BaseModel):
         None,
         description="Timestamp of the last update (optional)"
     )
+
+
+
+class UpdateSchema(BaseModel):
+    name: str | None = None
+    version: str | None = None
