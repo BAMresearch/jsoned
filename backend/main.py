@@ -1,13 +1,14 @@
-#backend\main.py
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+# backend\main.py
+from datetime import datetime
+
 from bson import ObjectId
 from database import schemas_collection
 from datamodel import SchemaDefinition
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from model import UpdateSchema
-from datetime import datetime
 
-#https://github.com/BAMresearch/jsoned/tree/main/backend
+# https://github.com/BAMresearch/jsoned/tree/main/backend
 
 app = FastAPI()
 
@@ -19,6 +20,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Get all schemas
 @app.get("/schemas")
 async def get_all_schemas():
@@ -27,6 +29,7 @@ async def get_all_schemas():
         s["_id"] = str(s["_id"])
     return schemas
 
+
 # Add new schema
 @app.post("/schemas")
 async def add_schema(schema: SchemaDefinition):
@@ -34,16 +37,18 @@ async def add_schema(schema: SchemaDefinition):
     result = schemas_collection.insert_one(schema.dict())
     return {"id": str(result.inserted_id)}
 
+
 # Update schema (PUT)
 @app.put("/schemas/{id}")
 async def update_schema(id: str, update: UpdateSchema):
     result = schemas_collection.update_one(
         {"_id": ObjectId(id)},
-        {"$set": {k: v for k, v in update.dict().items() if v is not None}}
+        {"$set": {k: v for k, v in update.dict().items() if v is not None}},
     )
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Schema not found")
     return {"message": "Schema updated"}
+
 
 # Delete schema
 @app.delete("/schemas/{id}")

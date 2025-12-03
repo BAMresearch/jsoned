@@ -1,7 +1,9 @@
-#backend\datamodel.py
-#datamodel.py → Defines core data structures (e.g., SchemaDefinition) that represent your main entities.
-from pydantic import BaseModel
+# backend\datamodel.py
+# datamodel.py → Defines core data structures (e.g., SchemaDefinition) that represent your main entities.
 from datetime import datetime
+
+from pydantic import BaseModel
+
 
 class SchemaDefinition(BaseModel):
     id: str
