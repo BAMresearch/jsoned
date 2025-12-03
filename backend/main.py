@@ -1,4 +1,3 @@
-
 from datetime import datetime
 
 from bson import ObjectId
@@ -18,6 +17,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/schemas")
 async def get_all_schemas():
     """
@@ -30,6 +30,7 @@ async def get_all_schemas():
     for s in schemas:
         s["_id"] = str(s["_id"])
     return schemas
+
 
 @app.post("/schemas")
 async def add_schema(schema: SchemaDefinition):
@@ -45,6 +46,7 @@ async def add_schema(schema: SchemaDefinition):
     schema.updated_at = datetime.utcnow()
     result = schemas_collection.insert_one(schema.dict())
     return {"id": str(result.inserted_id)}
+
 
 @app.put("/schemas/{id}")
 async def update_schema(id: str, update: UpdateSchema):
@@ -68,6 +70,7 @@ async def update_schema(id: str, update: UpdateSchema):
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Schema not found")
     return {"message": "Schema updated"}
+
 
 @app.delete("/schemas/{id}")
 async def delete_schema(id: str):
