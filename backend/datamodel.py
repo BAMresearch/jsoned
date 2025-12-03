@@ -8,21 +8,13 @@ class SchemaDefinition(BaseModel):
     name: str = Field(
         ...,
         description="Human-readable name of the schema",
-        min_length=3  # 👈 enforce minimum length
+        min_length=3,  # 👈 enforce minimum length
     )
-    version: str = Field(
-        "1.0.0",
-        description="Version of the schema"
-    )
-    content: dict = Field(
-        ...,
-        description="The actual schema content as a dictionary"
-    )
+    version: str = Field("1.0.0", description="Version of the schema")
+    content: dict = Field(..., description="The actual schema content as a dictionary")
     updated_at: datetime | None = Field(
-        None,
-        description="Timestamp of the last update (optional)"
+        None, description="Timestamp of the last update (optional)"
     )
-
 
 
 class UpdateSchema(BaseModel):
