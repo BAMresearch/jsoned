@@ -1,11 +1,11 @@
 
 from datetime import datetime
-
 from bson import ObjectId
-from database import schemas_collection
-from datamodel import SchemaDefinition, UpdateSchema
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+
+from database import schemas_collection
+from datamodel import SchemaDefinition, UpdateSchema
 
 # Initialize FastAPI application
 app = FastAPI()
@@ -22,22 +22,23 @@ app.add_middleware(
 @app.get("/schemas")
 async def get_all_schemas():
     """
-    Retrieve all schemas from the database.
+    Retrieve all schema documents from the database.
     Converts MongoDB ObjectId to string for JSON serialization.
     Returns:
         list: A list of schema documents with stringified IDs.
     """
-    # Fetch all schemas from MongoDB
+    # Fetch all schema documents from MongoDB
     schema_documents = list(schemas_collection.find())
 
-    # Verbose loop: explain and transform each schema
-    for schema_doc in schema_documents:
-        # Convert ObjectId to string for API response
-        original_id = schema_doc["_id"]
-        schema_doc["_id"] = str(original_id)
+    # Verbose loop: clarify what we're iterating over and why
+    for schema_document in schema_documents:
+        # Each schema_document is a MongoDB record representing a schema definition
+        # Convert its ObjectId to string so it can be returned in JSON
+        original_id = schema_document["_id"]
+        schema_document["_id"] = str(original_id)
 
-        # Optional: Add extra clarity or logging (could use logging module)
-        # print(f"Processed schema: original_id={original_id}, converted_id={schema_doc['_id']}")
+        # Optional: Add logging or debugging info
+        # print(f"Converted ObjectId {original_id} to string for schema: {schema_document}")
 
     return schema_documents
 
@@ -73,7 +74,7 @@ async def update_schema(id: str, update: UpdateSchema):
         dict: Success message.
     """
     # Prepare update fields (ignore None values)
-    update_fields = {k: v for k, v in update.dict().items() if v is not None}
+    update_fields = {key: value for key, value in update.dict().items() if value is not None}
 
     result = schemas_collection.update_one(
         {"_id": ObjectId(id)},
@@ -102,4 +103,8 @@ async def delete_schema(id: str):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Schema not found")
 
-    return {"message": "Schema deleted"}
+
+
+
+
+
