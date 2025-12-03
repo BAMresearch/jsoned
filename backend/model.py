@@ -1,4 +1,3 @@
-# backend\model.py
 # Defines auxiliary or update models (e.g., UpdateSchema) for partial updates or specialized requests.
 """### ✅ Best Practice for Large Projects - A common structure for FastAPI projects:
 
