@@ -1,5 +1,7 @@
 from datetime import datetime
+
 from pydantic import BaseModel, Field
+
 
 class SchemaDefinition(BaseModel):
     id: str = Field(..., description="Unique identifier for the schema")
