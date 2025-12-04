@@ -1,11 +1,10 @@
-
 from datetime import datetime
-from bson import ObjectId
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 
+from bson import ObjectId
 from database import schemas_collection
 from datamodel import SchemaDefinition, UpdateSchema
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 # Initialize FastAPI application
 app = FastAPI()
@@ -18,6 +17,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.get("/schemas")
 async def get_all_schemas():
@@ -74,7 +74,9 @@ async def update_schema(id: str, update: UpdateSchema):
         dict: Success message.
     """
     # Prepare update fields (ignore None values)
-    update_fields = {key: value for key, value in update.dict().items() if value is not None}
+    update_fields = {
+        key: value for key, value in update.dict().items() if value is not None
+    }
 
     result = schemas_collection.update_one(
         {"_id": ObjectId(id)},
@@ -102,9 +104,3 @@ async def delete_schema(id: str):
 
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Schema not found")
-
-
-
-
-
-
