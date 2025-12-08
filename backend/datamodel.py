@@ -3,20 +3,20 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
+from datetime import datetime
+
+from pydantic import BaseModel, Field
+
+
 class SchemaDefinition(BaseModel):
     id: str = Field(..., description="Unique identifier for the schema")
-    name: str = Field(
-        ...,
+    name: str | None = Field(
+        None ,
         description="Human-readable name of the schema",
-        min_length=3,  # 👈 enforce minimum length
+        min_length=3,
     )
-    version: str = Field("1.0.0", description="Version of the schema")
-    content: dict = Field(..., description="The actual schema content as a dictionary")
+    version: str | None  = Field(None, description="Version of the schema")
+    content: dict | None  = Field(None, description="The actual schema content as a dictionary")
     updated_at: datetime | None = Field(
-        None, description="Timestamp of the last update (optional)"
+        None, description="Timestamp of the last update"
     )
-
-
-class UpdateSchema(BaseModel):
-    name: str | None = None
-    version: str | None = None
