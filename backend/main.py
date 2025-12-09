@@ -1,133 +1,77 @@
 
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+from uuid import uuid4
 
-from bson import ObjectId
 from fastapi import FastAPI, HTTPException
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import schemas_collection
-from datamodel import SchemaDefinition, UpdateSchema
-
+from datamodel import SchemaDefinition
 
 # ---- FastAPI app & CORS ----
 app = FastAPI()
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],        # adjust in production
+    allow_origins=["*"],  # adjust in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
 # ---- Routes ----
-@app.get("/schemas")
+@app.get("/schemas", response_model=List[SchemaDefinition])
 async def get_all_schemas() -> List[Dict[str, Any]]:
     """
-    Retrieve all schema documents from the database.
-
-    Returns:
-        list: A list of schema documents with JSON-safe '_id' fields (strings).
+    Retrieve all schemas. Each schema uses `id` as a string.
     """
     docs = list(schemas_collection.find())
-    # One-liner conversion: ObjectId -> str (applies even to nested ObjectIds)
-    return jsonable_encoder(docs, custom_encoder={ObjectId: str})
+    # Ensure all docs have `id` as string
+    normalized = []
+    for d in docs:
+        if "id" not in d or not isinstance(d["id"], str):
+            d["id"] = str(d.get("id", uuid4()))
+        normalized.append(d)
+    return jsonable_encoder(normalized)
 
 
-@app.post("/schemas")
+@app.post("/schemas", response_model=SchemaDefinition)
 async def add_schema(schema: SchemaDefinition) -> Dict[str, Any]:
     """
-    Add a new schema to the database.
-
-    Args:
-        schema (SchemaDefinition): The schema data to insert.
-
-    Returns:
-        dict: A dictionary with keys:
-              - "id": the ID of the inserted schema (string),
-              - "schema": the actual inserted schema document as stored in the database,
-                          with JSON-safe '_id' and other BSON types.
+    Add a new schema. If `id` is missing, generate one.
     """
-    # Set server-side timestamp
-    schema.updated_at = datetime.utcnow()
-
-    # Insert and obtain new ObjectId
-    result = schemas_collection.insert_one(schema.dict())
-    inserted_oid = result.inserted_id
-
-    # Fetch the stored document to return exactly what's in DB
-    inserted_doc = schemas_collection.find_one({"_id": inserted_oid})
-
-    # Make the document JSON-safe (ObjectId -> str, etc.)
-    inserted_doc_json = jsonable_encoder(inserted_doc, custom_encoder={ObjectId: str})
-
-    # Stable, tooling-friendly shape:
-    return {"id": str(inserted_oid), "schema": inserted_doc_json}
-
-    # If you want ID-as-key instead, return this:
-    # return {str(inserted_oid): inserted_doc_json}
+    doc = schema.dict()
+    # Ensure `id` exists
+    if not doc.get("id"):
+        doc["id"] = str(uuid4())
+    # Set updated_at
+    doc["updated_at"] = datetime.utcnow()
+    # Insert into MongoDB
+    schemas_collection.insert_one(doc)
+    return jsonable_encoder(doc)
 
 
-@app.put("/schemas/{id}")
-async def update_schema(id: str, update: UpdateSchema) -> Dict[str, Any]:
+@app.put("/schemas/{id}", response_model=Dict[str, str])
+async def update_schema(id: str, update: SchemaDefinition) -> Dict[str, str]:
     """
-    Update an existing schema by ID.
-
-    Args:
-        id (str): The schema ID (string form of ObjectId).
-        update (UpdateSchema): Fields to update.
-
-    Raises:
-        HTTPException: If the schema is not found.
-
-    Returns:
-        dict: Success message and (optionally) the updated document.
+    Update schema by `id`. Ignore None values except updated_at.
     """
-    # Prepare update fields (ignore None values)
-    update_fields = {k: v for k, v in update.dict().items() if v is not None}
-
-    # If anything is updated, refresh timestamp
+    update_fields = {k: v for k, v in update.dict().items() if v is not None and k != "id"}
     if update_fields:
         update_fields["updated_at"] = datetime.utcnow()
-
-    result = schemas_collection.update_one(
-        {"_id": ObjectId(id)},
-        {"$set": update_fields} if update_fields else {}
-    )
-
+    result = schemas_collection.update_one({"id": id}, {"$set": update_fields} if update_fields else {})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Schema not found")
-
-    # Optionally return the updated document (commented out by default)
-    # updated_doc = schemas_collection.find_one({"_id": ObjectId(id)})
-    # return {
-    #     "message": "Schema updated",
-    #     "schema": jsonable_encoder(updated_doc, custom_encoder={ObjectId: str}),
-    # }
-
     return {"message": "Schema updated"}
 
 
-@app.delete("/schemas/{id}")
+@app.delete("/schemas/{id}", response_model=Dict[str, str])
 async def delete_schema(id: str) -> Dict[str, str]:
     """
-    Delete a schema by ID.
-
-    Args:
-        id (str): The schema ID (string form of ObjectId).
-
-    Raises:
-        HTTPException: If the schema is not found.
-
-    Returns:
-        dict: Success message.
+    Delete schema by `id`.
     """
-    result = schemas_collection.delete_one({"_id": ObjectId(id)})
-
+    result = schemas_collection.delete_one({"id": id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Schema not found")
-
     return {"message": "Schema deleted"}
