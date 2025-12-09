@@ -1,4 +1,3 @@
-
 from datetime import datetime
 from typing import Any, Optional
 from uuid import uuid4
@@ -18,6 +17,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # ---- Routes ----
 @app.get("/schemas", response_model=list[SchemaDefinition])
@@ -71,15 +71,21 @@ async def update_schema(id: str, update: SchemaDefinition) -> dict[str, str]:
     Only non-None fields are updated; `updated_at` is refreshed automatically.
     """
     if not isinstance(id, str) or not id.strip():
-        raise HTTPException(status_code=400, detail="Invalid schema id (must be a non-empty string)")
+        raise HTTPException(
+            status_code=400, detail="Invalid schema id (must be a non-empty string)"
+        )
 
     # Ignore None values and prevent changing the primary key
-    update_fields = {k: v for k, v in update.dict().items() if v is not None and k != "id"}
+    update_fields = {
+        k: v for k, v in update.dict().items() if v is not None and k != "id"
+    }
 
     if update_fields:
         update_fields["updated_at"] = datetime.utcnow()
 
-    result = schemas_collection.update_one({"id": id}, {"$set": update_fields} if update_fields else {})
+    result = schemas_collection.update_one(
+        {"id": id}, {"$set": update_fields} if update_fields else {}
+    )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Schema not found")
 
@@ -92,7 +98,9 @@ async def delete_schema(id: str) -> dict[str, str]:
     Delete schema by `id`.
     """
     if not isinstance(id, str) or not id.strip():
-        raise HTTPException(status_code=400, detail="Invalid schema id (must be a non-empty string)")
+        raise HTTPException(
+            status_code=400, detail="Invalid schema id (must be a non-empty string)"
+        )
 
     result = schemas_collection.delete_one({"id": id})
     if result.deleted_count == 0:
