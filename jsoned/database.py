@@ -10,4 +10,4 @@ from motor.motor_asyncio import AsyncIOMotorClient
 # MongoDB Driver
 client = AsyncIOMotorClient("mongodb://localhost:27017")
 database = client.jsoned_db
-collection = database.schemas
+schemas_collection = database.schemas

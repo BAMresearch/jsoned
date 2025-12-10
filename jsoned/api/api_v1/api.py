@@ -1,6 +1,7 @@
 # TODO add login with oauth2
-# from app.api.api_v1.endpoints import login
 from fastapi import APIRouter
 
+from jsoned.api.api_v1.endpoints import schemas
+
 api_router = APIRouter()
-# api_router.include_router(login.router, prefix="/login", tags=["login"])
+api_router.include_router(schemas.router, prefix="/schemas", tags=["schemas"])
