@@ -1,22 +1,38 @@
+from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 from database import schemas_collection
 from datamodel import SchemaDefinition
 from fastapi import FastAPI, HTTPException
 from fastapi.encoders import jsonable_encoder
-from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.cors import CORSMiddleware
 
-# ---- FastAPI app & CORS ----
-app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # TODO: restrict in production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+from jsoned.api.api_v1.api import api_router
+from jsoned.settings import settings
+
+
+@asynccontextmanager
+async def app_init(app: FastAPI):
+    app.include_router(api_router, prefix=settings.API_V1_STR)
+    yield
+
+
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    lifespan=app_init,
 )
+
+# Set all CORS enabled origins
+if settings.BACKEND_CORS_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.BACKEND_CORS_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 
 # ---- Routes ----
