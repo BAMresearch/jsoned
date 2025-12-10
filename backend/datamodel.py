@@ -1,4 +1,3 @@
-
 # datamodel.py
 import hashlib
 import json
@@ -76,7 +75,9 @@ class SchemaDefinition(BaseModel):
 
         for k, v in self.content.items():
             if not isinstance(k, str) or not k:
-                raise ValueError("All field names in `content` must be non-empty strings")
+                raise ValueError(
+                    "All field names in `content` must be non-empty strings"
+                )
             if not isinstance(v, str):
                 raise ValueError(
                     f"Type for field '{k}' must be a string (one of {sorted(ALLOWED_FIELD_TYPES)})"

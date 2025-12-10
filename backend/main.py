@@ -1,4 +1,3 @@
-
 # main.py
 from datetime import datetime
 from typing import Any, Optional
@@ -19,8 +18,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # ---- Helpers ----
-def _merge_flat_content(existing: dict[str, Any] | None, incoming: dict[str, Any] | None) -> dict[str, Any]:
+def _merge_flat_content(
+    existing: dict[str, Any] | None, incoming: dict[str, Any] | None
+) -> dict[str, Any]:
     """
     Merge two flat dicts for schema `content`.
     - Existing values are overwritten by incoming values for the same key.
@@ -107,8 +109,14 @@ async def update_schema(id: str, update: SchemaDefinition) -> dict[str, str]:
 
     payload = update.dict()
 
-    merged_name = payload.get("name") if payload.get("name") is not None else existing.get("name")
-    merged_version = payload.get("version") if payload.get("version") is not None else existing.get("version")
+    merged_name = (
+        payload.get("name") if payload.get("name") is not None else existing.get("name")
+    )
+    merged_version = (
+        payload.get("version")
+        if payload.get("version") is not None
+        else existing.get("version")
+    )
 
     # --- Merge content (flat dict) ---
     incoming_content: dict[str, Any] | None = payload.get("content")
@@ -140,7 +148,9 @@ async def update_schema(id: str, update: SchemaDefinition) -> dict[str, str]:
 
 
 @app.patch("/schemas/{id}/content", response_model=dict[str, str])
-async def patch_schema_content(id: str, content_updates: dict[str, str]) -> dict[str, str]:
+async def patch_schema_content(
+    id: str, content_updates: dict[str, str]
+) -> dict[str, str]:
     """
     Convenience endpoint to ONLY upsert fields in `content`:
     - Adds new fields.
@@ -168,7 +178,9 @@ async def patch_schema_content(id: str, content_updates: dict[str, str]) -> dict
 
     for k, v in content_updates.items():
         if not isinstance(k, str) or not k.strip():
-            raise HTTPException(status_code=400, detail="Field names must be non-empty strings")
+            raise HTTPException(
+                status_code=400, detail="Field names must be non-empty strings"
+            )
         if not isinstance(v, str) or v not in ALLOWED_FIELD_TYPES:
             raise HTTPException(
                 status_code=400,
@@ -177,7 +189,9 @@ async def patch_schema_content(id: str, content_updates: dict[str, str]) -> dict
 
     merged_content = _merge_flat_content(existing.get("content"), content_updates)
 
-    new_id = compute_schema_hash(existing.get("name"), existing.get("version"), merged_content)
+    new_id = compute_schema_hash(
+        existing.get("name"), existing.get("version"), merged_content
+    )
 
     final_doc = {
         "id": new_id,
@@ -192,7 +206,6 @@ async def patch_schema_content(id: str, content_updates: dict[str, str]) -> dict
         raise HTTPException(status_code=404, detail="Schema not found during update")
 
     return {"message": "Content patched", "id": new_id}
-
 
 
 @app.delete("/schemas/{id}", response_model=dict[str, str])
