@@ -1,14 +1,13 @@
 
 # main.py
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
+from database import schemas_collection
+from datamodel import ALLOWED_FIELD_TYPES, SchemaDefinition, compute_schema_hash
 from fastapi import FastAPI, HTTPException
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
-
-from database import schemas_collection
-from datamodel import SchemaDefinition, compute_schema_hash, ALLOWED_FIELD_TYPES
 
 # ---- FastAPI app & CORS ----
 app = FastAPI()
@@ -21,7 +20,7 @@ app.add_middleware(
 )
 
 # ---- Helpers ----
-def _merge_flat_content(existing: Optional[Dict[str, Any]], incoming: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def _merge_flat_content(existing: dict[str, Any] | None, incoming: dict[str, Any] | None) -> dict[str, Any]:
     """
     Merge two flat dicts for schema `content`.
     - Existing values are overwritten by incoming values for the same key.
@@ -112,7 +111,7 @@ async def update_schema(id: str, update: SchemaDefinition) -> dict[str, str]:
     merged_version = payload.get("version") if payload.get("version") is not None else existing.get("version")
 
     # --- Merge content (flat dict) ---
-    incoming_content = payload.get("content")
+    incoming_content: dict[str, Any] | None = payload.get("content")
     merged_content = _merge_flat_content(existing.get("content"), incoming_content)
 
     # Optional: validate merged content types
@@ -141,7 +140,7 @@ async def update_schema(id: str, update: SchemaDefinition) -> dict[str, str]:
 
 
 @app.patch("/schemas/{id}/content", response_model=dict[str, str])
-async def patch_schema_content(id: str, content_updates: Dict[str, str]) -> dict[str, str]:
+async def patch_schema_content(id: str, content_updates: dict[str, str]) -> dict[str, str]:
     """
     Convenience endpoint to ONLY upsert fields in `content`:
     - Adds new fields.
@@ -195,6 +194,7 @@ async def patch_schema_content(id: str, content_updates: Dict[str, str]) -> dict
     return {"message": "Content patched", "id": new_id}
 
 
+
 @app.delete("/schemas/{id}", response_model=dict[str, str])
 async def delete_schema(id: str) -> dict[str, str]:
     """
@@ -207,4 +207,6 @@ async def delete_schema(id: str) -> dict[str, str]:
     result = schemas_collection.delete_one({"id": id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Schema not found")
-    return {"message": "Schema deleted"}
+
+    # ✅ Return a simple success message
+    return {"message": "Schema deleted", "id": id}

@@ -3,7 +3,8 @@
 import hashlib
 import json
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Optional
+
 from pydantic import BaseModel, Field, model_validator
 
 ALLOWED_FIELD_TYPES = {
@@ -15,10 +16,11 @@ ALLOWED_FIELD_TYPES = {
     "datetime",
 }
 
+
 def compute_schema_hash(
-    name: Optional[str],
-    version: Optional[str],
-    content: Optional[Dict[str, Any]],
+    name: str | None,
+    version: str | None,
+    content: dict[str, Any] | None,
 ) -> str:
     """
     Compute a deterministic SHA-256 hash from the canonical JSON of {name, version, content}.
@@ -32,16 +34,16 @@ def compute_schema_hash(
 
 class SchemaDefinition(BaseModel):
     id: str = Field(..., description="Unique identifier for the schema (content hash)")
-    name: Optional[str] = Field(
+    name: str | None = Field(
         None,
         description="Human-readable name of the schema",
         min_length=3,
     )
-    version: Optional[str] = Field(None, description="Version of the schema")
-    content: Optional[Dict[str, Any]] = Field(
+    version: str | None = Field(None, description="Version of the schema")
+    content: dict[str, Any] | None = Field(
         None, description="The actual schema content as a dictionary"
     )
-    updated_at: Optional[datetime] = Field(
+    updated_at: datetime | None = Field(
         None, description="Timestamp of the last update"
     )
 
