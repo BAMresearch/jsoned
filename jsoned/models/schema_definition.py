@@ -1,10 +1,14 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class SchemaDefinition(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str | None = Field(None, alias="_id")
+
     title: str | None = Field(
         None,
         description="A human-readable title given to the schema entry.",

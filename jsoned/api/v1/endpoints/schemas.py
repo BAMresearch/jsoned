@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 
+from bson import ObjectId
+from bson.errors import InvalidId
 from fastapi import APIRouter, HTTPException, Request, status
 from pymongo.errors import DuplicateKeyError
 
@@ -10,9 +12,13 @@ router = APIRouter()
 
 @router.get("/all", response_model=list[SchemaDefinition])
 async def get_all_schemas(request: Request):
-    schemas_collection = request.app.state.schemas_collection
-    docs = schemas_collection.find({})
-    return [SchemaDefinition(**doc) async for doc in docs]
+    collection = request.app.state.schemas_collection
+    docs = collection.find({})
+    all_docs = []
+    async for doc in docs:
+        doc["_id"] = str(doc["_id"])
+        all_docs.append(SchemaDefinition(**doc))
+    return all_docs
 
 
 @router.post(
@@ -28,43 +34,63 @@ async def add_schema(request: Request, schema: SchemaDefinition):
             detail="`content` must not be null.",
         )
 
-    schemas_collection = request.app.state.schemas_collection
+    collection = request.app.state.schemas_collection
 
     # Build doc to insert, excluding None fields
     doc = schema.model_dump(exclude_none=True)
     doc["created_at"] = datetime.now(timezone.utc)
 
     try:
-        await schemas_collection.insert_one(doc)
+        result = await collection.insert_one(doc)
     except DuplicateKeyError:
         # you created a unique index on title
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="A schema with this title already exists.",
         )
-
+    doc["_id"] = str(result.inserted_id)
     return SchemaDefinition(**doc)
 
 
-# @router.post("/add", response_model=SchemaDefinition)
-# async def add_schema(schema: SchemaDefinition) -> dict[str, Any]:
-#     """
-#     Add a new schema. If `id` is missing/empty, generate one; always refresh `updated_at`.
-#     """
-#     doc = schema.dict()
+@router.delete("/delete/{title}", status_code=status.HTTP_200_OK)
+async def delete_schema_by_title(
+    request: Request,
+    title: str | None = None,
+):
+    """
+    Delete a schema by _id OR by title.
+    Provide exactly one of: id or title.
+    """
+    if not title:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide exactly one of: id or title",
+        )
 
-#     # Guarantee a usable id
-#     if not isinstance(doc.get("id"), str) or not doc["id"].strip():
-#         doc["id"] = str(uuid4())
+    collection = request.app.state.schemas_collection
+    result = await collection.delete_one({"title": title})
+    if result.deleted_count == 0:
+        raise HTTPException(404, f"Schema with title `{title}` not found")
 
-#     # Server-side timestamp
-#     doc["updated_at"] = datetime.utcnow()
+    return {"message": "Schema deleted"}
 
-#     # Insert as-is (no ObjectId conversions)
-#     schemas_collection.insert_one(doc)
 
-#     # Return exactly what we stored
-#     return jsonable_encoder(doc)
+@router.delete("/delete/id/{id}", status_code=status.HTTP_200_OK)
+async def delete_schema_by_id(
+    request: Request,
+    id: str | None = None,
+):
+    collection = request.app.state.schemas_collection
+    try:
+        oid = ObjectId(id)
+    except InvalidId:
+        raise HTTPException(400, "Invalid Mongo ObjectId")
+
+    result = await collection.delete_one({"_id": oid})
+    if result.deleted_count == 0:
+        raise HTTPException(404, f"Schema with id `{id}` not found")
+
+    return {"message": "Schema deleted"}
 
 
 # @router.put("/update/{id}", response_model=dict[str, str])
