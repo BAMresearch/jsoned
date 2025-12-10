@@ -1,16 +1,23 @@
-# from pymongo import MongoClient
-
-# client = MongoClient("mongodb://localhost:27017/")
-# db = client["jsoned_db"]
-# schemas_collection = db["schemas"]
-
-
 from motor.motor_asyncio import AsyncIOMotorClient
 
-# MongoDB Driver
-client = AsyncIOMotorClient("mongodb://localhost:27017")
-database = client.jsoned_db
-schemas_collection = database.schemas
+from jsoned.settings import settings
 
-# Ensure that the `title` field is unique
-schemas_collection.create_index([("title", 1)], unique=True)
+client: AsyncIOMotorClient | None = None
+database = None
+schemas_collection = None
+
+
+async def connect_to_mongo():
+    global client, database, schemas_collection
+
+    client = AsyncIOMotorClient(settings.MONGO_URI)
+    database = client.jsoned_db
+    schemas_collection = database.schemas
+
+    # create index once on startup
+    await schemas_collection.create_index("title", unique=True)
+
+
+async def close_mongo():
+    if client is not None:
+        client.close()
