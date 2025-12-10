@@ -11,6 +11,11 @@ class SchemaDefinition(BaseModel):
         min_length=3,
     )
 
+    created_at: datetime | None = Field(
+        None,
+        description="Timestamp of the creation of the schema entry.",
+    )
+
     updated_at: datetime | None = Field(
         None,
         description="Timestamp of the last update of the schema entry.",

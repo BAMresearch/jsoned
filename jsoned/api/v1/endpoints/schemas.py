@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Request
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, HTTPException, Request, status
+from pymongo.errors import DuplicateKeyError
 
 from jsoned.models.schema_definition import SchemaDefinition
 
@@ -10,6 +13,37 @@ async def get_all_schemas(request: Request):
     schemas_collection = request.app.state.schemas_collection
     docs = schemas_collection.find({})
     return [SchemaDefinition(**doc) async for doc in docs]
+
+
+@router.post(
+    "/add", response_model=SchemaDefinition, status_code=status.HTTP_201_CREATED
+)
+async def add_schema(request: Request, schema: SchemaDefinition):
+    """
+    Add a new schema. Requires `content` to be non-null. `updated_at` is always set by the server.
+    """
+    if schema.content is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="`content` must not be null.",
+        )
+
+    schemas_collection = request.app.state.schemas_collection
+
+    # Build doc to insert, excluding None fields
+    doc = schema.model_dump(exclude_none=True)
+    doc["created_at"] = datetime.now(timezone.utc)
+
+    try:
+        await schemas_collection.insert_one(doc)
+    except DuplicateKeyError:
+        # you created a unique index on title
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A schema with this title already exists.",
+        )
+
+    return SchemaDefinition(**doc)
 
 
 # @router.post("/add", response_model=SchemaDefinition)
