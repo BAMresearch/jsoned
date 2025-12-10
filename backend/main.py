@@ -1,13 +1,14 @@
-# main.py (updated)
 
+# main.py
 from datetime import datetime
-from typing import Any  # <-- Only Any is needed
+from typing import Any, Dict, Optional
 
-from database import schemas_collection
-from datamodel import SchemaDefinition, compute_schema_hash
 from fastapi import FastAPI, HTTPException
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
+
+from database import schemas_collection
+from datamodel import SchemaDefinition, compute_schema_hash, ALLOWED_FIELD_TYPES
 
 # ---- FastAPI app & CORS ----
 app = FastAPI()
@@ -18,6 +19,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ---- Helpers ----
+def _merge_flat_content(existing: Optional[Dict[str, Any]], incoming: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Merge two flat dicts for schema `content`.
+    - Existing values are overwritten by incoming values for the same key.
+    - New keys in incoming are added.
+    """
+    base = dict(existing or {})
+    if incoming:
+        for k, v in incoming.items():
+            base[k] = v
+    return base
 
 
 # ---- Routes ----
@@ -31,23 +45,19 @@ async def get_all_schemas() -> list[dict[str, Any]]:
     docs = list(schemas_collection.find())
     normalized: list[dict[str, Any]] = []
     for d in docs:
-        # Compute the correct content hash
         computed_id = compute_schema_hash(
             d.get("name"), d.get("version"), d.get("content")
         )
         if d.get("id") != computed_id:
-            # Heal legacy/mismatched ids
             d["id"] = computed_id
             schemas_collection.update_one(
                 {"_id": d["_id"]}, {"$set": {"id": computed_id}}
             )
-        # Ensure updated_at exists (server-side default)
         if d.get("updated_at") is None:
             d["updated_at"] = datetime.utcnow()
             schemas_collection.update_one(
                 {"_id": d["_id"]}, {"$set": {"updated_at": d["updated_at"]}}
             )
-        # Remove internal MongoDB _id from outward JSON
         d.pop("_id", None)
         normalized.append(d)
     return jsonable_encoder(normalized)
@@ -65,61 +75,124 @@ async def add_schema(schema: SchemaDefinition) -> dict[str, Any]:
         version=schema.version,
         content=schema.content,
         updated_at=None,
-        id="ignored",  # ignored by model_validator; here for clarity
+        id="ignored",  # ignored by model_validator
     )
     doc = model.dict()
     doc["updated_at"] = datetime.utcnow()
-    # Insert as-is (no ObjectId conversions for id)
     schemas_collection.insert_one(doc)
-    # Return exactly what we stored
     return jsonable_encoder(doc)
 
 
 @app.put("/schemas/{id}", response_model=dict[str, str])
 async def update_schema(id: str, update: SchemaDefinition) -> dict[str, str]:
     """
-    Update schema by `id`. Because `id` is a content hash, any change in
-    {name, version, content} will produce a new `id`. This endpoint:
-    1) Finds the existing document by the current `id`.
-    2) Merges provided fields (ignores `None` and any `id` supplied).
-    3) Recomputes `id` from merged content.
-    4) Replaces the document and returns the (possibly new) `id`.
+    Update schema by `id`.
+
+    Behavior:
+    - Finds existing document by current `id`.
+    - Merges provided fields (ignores any None and any `id` supplied).
+    - `content` is MERGED: existing fields preserved unless explicitly changed; new fields added.
+    - Recomputes `id` from merged content and replaces the document.
+
+    Notes:
+    - Because `id` is a hash of {name, version, content}, any change can produce a new `id`.
     """
     if not isinstance(id, str) or not id.strip():
         raise HTTPException(
             status_code=400, detail="Invalid schema id (must be a non-empty string)"
         )
+
     existing = schemas_collection.find_one({"id": id})
     if not existing:
         raise HTTPException(status_code=404, detail="Schema not found")
 
-    # Merge non-None fields from the payload (ignore any 'id' from client)
     payload = update.dict()
-    merged = {
-        "name": payload.get("name", existing.get("name")),
-        "version": payload.get("version", existing.get("version")),
-        "content": payload.get("content", existing.get("content")),
-    }
 
-    # Compute new hash-based id using the same logic
-    new_id = compute_schema_hash(merged["name"], merged["version"], merged["content"])
+    merged_name = payload.get("name") if payload.get("name") is not None else existing.get("name")
+    merged_version = payload.get("version") if payload.get("version") is not None else existing.get("version")
 
-    # Build final doc to store
+    # --- Merge content (flat dict) ---
+    incoming_content = payload.get("content")
+    merged_content = _merge_flat_content(existing.get("content"), incoming_content)
+
+    # Optional: validate merged content types
+    for k, v in merged_content.items():
+        if not isinstance(v, str) or v not in ALLOWED_FIELD_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid type for field '{k}': '{v}'. Allowed: {sorted(ALLOWED_FIELD_TYPES)}",
+            )
+
+    new_id = compute_schema_hash(merged_name, merged_version, merged_content)
+
     final_doc = {
         "id": new_id,
-        "name": merged["name"],
-        "version": merged["version"],
-        "content": merged["content"],
+        "name": merged_name,
+        "version": merged_version,
+        "content": merged_content,
         "updated_at": datetime.utcnow(),
     }
 
-    # Replace the existing document (matched by the previous id)
     replace_result = schemas_collection.replace_one({"id": id}, final_doc)
     if replace_result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Schema not found during update")
 
-    # If id changed, the caller now has to reference the new id
     return {"message": "Schema updated", "id": new_id}
+
+
+@app.patch("/schemas/{id}/content", response_model=dict[str, str])
+async def patch_schema_content(id: str, content_updates: Dict[str, str]) -> dict[str, str]:
+    """
+    Convenience endpoint to ONLY upsert fields in `content`:
+    - Adds new fields.
+    - Changes type of existing fields.
+    - Does not touch `name` or `version`.
+
+    Example body:
+    {
+      "age": "integer",
+      "email": "string"
+    }
+    """
+    if not isinstance(id, str) or not id.strip():
+        raise HTTPException(
+            status_code=400, detail="Invalid schema id (must be a non-empty string)"
+        )
+
+    existing = schemas_collection.find_one({"id": id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Schema not found")
+
+    # Validate incoming updates
+    if not isinstance(content_updates, dict):
+        raise HTTPException(status_code=400, detail="Body must be a JSON object")
+
+    for k, v in content_updates.items():
+        if not isinstance(k, str) or not k.strip():
+            raise HTTPException(status_code=400, detail="Field names must be non-empty strings")
+        if not isinstance(v, str) or v not in ALLOWED_FIELD_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid type for field '{k}': '{v}'. Allowed: {sorted(ALLOWED_FIELD_TYPES)}",
+            )
+
+    merged_content = _merge_flat_content(existing.get("content"), content_updates)
+
+    new_id = compute_schema_hash(existing.get("name"), existing.get("version"), merged_content)
+
+    final_doc = {
+        "id": new_id,
+        "name": existing.get("name"),
+        "version": existing.get("version"),
+        "content": merged_content,
+        "updated_at": datetime.utcnow(),
+    }
+
+    replace_result = schemas_collection.replace_one({"id": id}, final_doc)
+    if replace_result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Schema not found during update")
+
+    return {"message": "Content patched", "id": new_id}
 
 
 @app.delete("/schemas/{id}", response_model=dict[str, str])
