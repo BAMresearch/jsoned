@@ -1,23 +1,27 @@
-from motor.motor_asyncio import AsyncIOMotorClient
+from fastapi import HTTPException
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 
 from jsoned.settings import settings
 
 client: AsyncIOMotorClient | None = None
 database = None
-schemas_collection = None
+_schemas_collection: AsyncIOMotorCollection | None = None
 
 
 async def connect_to_mongo():
-    global client, database, schemas_collection
-
+    global client, database, _schemas_collection
     client = AsyncIOMotorClient(settings.MONGO_URI)
     database = client.jsoned_db
-    schemas_collection = database.schemas
-
-    # create index once on startup
-    await schemas_collection.create_index("title", unique=True)
+    _schemas_collection = database.schemas
+    await _schemas_collection.create_index("title", unique=True)
 
 
 async def close_mongo():
     if client is not None:
         client.close()
+
+
+def get_schemas_collection() -> AsyncIOMotorCollection:
+    if _schemas_collection is None:
+        raise HTTPException(503, "Database not available")
+    return _schemas_collection

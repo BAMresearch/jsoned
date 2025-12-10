@@ -9,7 +9,7 @@ class Settings(BaseSettings):
         "http://localhost",
         "http://localhost:3000",
     ]
-    MONGO_URI: AnyHttpUrl = "mongodb://localhost:27017"
+    MONGO_URI: str = "mongodb://localhost:27017"
 
 
 settings = Settings()

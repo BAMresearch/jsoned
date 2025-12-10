@@ -5,11 +5,6 @@ from pydantic import BaseModel, Field
 
 
 class SchemaDefinition(BaseModel):
-    id: UUID = Field(
-        ...,
-        description="Automatically generated unique identifier for the schema entry based on `content`.",
-    )
-
     title: str | None = Field(
         None,
         description="A human-readable title given to the schema entry.",

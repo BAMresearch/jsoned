@@ -1,22 +1,15 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
-from jsoned.database import schemas_collection
 from jsoned.models.schema_definition import SchemaDefinition
 
 router = APIRouter()
 
 
 @router.get("/all", response_model=list[SchemaDefinition])
-async def get_all_schemas():
-    """
-    Gets all the schemas present in the database and returns them in a list of `SchemaDefinition` models.
-    """
-    response = []
-    documents = schemas_collection.find({})
-    async for doc in documents:
-        response.append(SchemaDefinition(**doc))
-
-    return response
+async def get_all_schemas(request: Request):
+    schemas_collection = request.app.state.schemas_collection
+    docs = schemas_collection.find({})
+    return [SchemaDefinition(**doc) async for doc in docs]
 
 
 # @router.post("/add", response_model=SchemaDefinition)
