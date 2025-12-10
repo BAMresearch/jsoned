@@ -1,19 +1,27 @@
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 
 class SchemaDefinition(BaseModel):
-    id: str = Field(..., description="Unique identifier for the schema")
-    name: str | None = Field(
+    id: UUID = Field(
+        ...,
+        description="Automatically generated unique identifier for the schema entry based on `content`.",
+    )
+
+    title: str | None = Field(
         None,
-        description="Human-readable name of the schema",
+        description="A human-readable title given to the schema entry.",
         min_length=3,
     )
-    version: str | None = Field(None, description="Version of the schema")
-    content: dict | None = Field(
-        None, description="The actual schema content as a dictionary"
-    )
+
     updated_at: datetime | None = Field(
-        None, description="Timestamp of the last update"
+        None,
+        description="Timestamp of the last update of the schema entry.",
+    )
+
+    content: dict | None = Field(
+        None,
+        description="The actual schema content as a dictionary",
     )

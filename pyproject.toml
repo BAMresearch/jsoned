@@ -48,7 +48,7 @@ dev = [
 
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.
-include = ["backend/*.py", "tests/*.py"]
+include = ["jsoned/*.py", "tests/*.py"]
 exclude = [
     ".bzr",
     ".direnv",
@@ -128,5 +128,5 @@ where = ["."]
 namespaces = false
 
 [tool.setuptools_scm]
-write_to = "backend/_version.py"
+write_to = "jsoned/_version.py"
 
