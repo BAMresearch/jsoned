@@ -1,10 +1,12 @@
 from datetime import datetime, timezone
+from typing import Any
 
 from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi import APIRouter, HTTPException, Request, status
 from pymongo.errors import DuplicateKeyError
 
+from jsoned.models.content import ContentUpdate, UpdateResponse, hash_content
 from jsoned.models.schema_definition import SchemaDefinition
 
 router = APIRouter()
@@ -25,9 +27,6 @@ async def get_all_schemas(request: Request):
     "/add", response_model=SchemaDefinition, status_code=status.HTTP_201_CREATED
 )
 async def add_schema(request: Request, schema: SchemaDefinition):
-    """
-    Add a new schema. Requires `content` to be non-null. `updated_at` is always set by the server.
-    """
     if schema.content is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -39,6 +38,8 @@ async def add_schema(request: Request, schema: SchemaDefinition):
     # Build doc to insert, excluding None fields
     doc = schema.model_dump(exclude_none=True)
     doc["created_at"] = datetime.now(timezone.utc)
+    doc["updated_at"] = doc["created_at"]
+    doc["content_hash"] = hash_content(schema.content)
 
     try:
         result = await collection.insert_one(doc)
@@ -57,10 +58,6 @@ async def delete_schema_by_title(
     request: Request,
     title: str | None = None,
 ):
-    """
-    Delete a schema by _id OR by title.
-    Provide exactly one of: id or title.
-    """
     if not title:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -93,46 +90,53 @@ async def delete_schema_by_id(
     return {"message": "Schema deleted"}
 
 
-# @router.put("/update/{id}", response_model=dict[str, str])
-# async def update_schema(id: str, update: SchemaDefinition) -> dict[str, str]:
-#     """
-#     Update schema by `id`. Ignores `id` field in the payload (primary key is immutable).
-#     Only non-None fields are updated; `updated_at` is refreshed automatically.
-#     """
-#     if not isinstance(id, str) or not id.strip():
-#         raise HTTPException(
-#             status_code=400, detail="Invalid schema id (must be a non-empty string)"
-#         )
+@router.put(
+    "/update/content/{id}",
+    response_model=UpdateResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def update_schema_by_id(
+    request: Request,
+    id: str,
+    update: ContentUpdate,
+):
+    collection = request.app.state.schemas_collection
+    try:
+        oid = ObjectId(id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid Mongo ObjectId")
 
-#     # Ignore None values and prevent changing the primary key
-#     update_fields = {
-#         k: v for k, v in update.dict().items() if v is not None and k != "id"
-#     }
+    # Fetch current doc and hash
+    current = await collection.find_one({"_id": oid})
+    if current is None:
+        raise HTTPException(status_code=404, detail=f"Schema with id `{id}` not found")
+    old_hash = current.get("content_hash")
 
-#     if update_fields:
-#         update_fields["updated_at"] = datetime.utcnow()
+    # Compute new hash
+    new_hash = hash_content(update.content)
 
-#     result = schemas_collection.update_one(
-#         {"id": id}, {"$set": update_fields} if update_fields else {}
-#     )
-#     if result.matched_count == 0:
-#         raise HTTPException(status_code=404, detail="Schema not found")
+    # No change → skip update; return existing doc + message
+    if old_hash == new_hash:
+        current["_id"] = str(current["_id"])
+        return UpdateResponse(
+            updated=False,
+            schema=SchemaDefinition(**current),
+            message="Content unchanged; update skipped.",
+        )
 
-#     return {"message": "Schema updated"}
-
-
-# @router.delete("/delete/{id}", response_model=dict[str, str])
-# async def delete_schema(id: str) -> dict[str, str]:
-#     """
-#     Delete schema by `id`.
-#     """
-#     if not isinstance(id, str) or not id.strip():
-#         raise HTTPException(
-#             status_code=400, detail="Invalid schema id (must be a non-empty string)"
-#         )
-
-#     result = schemas_collection.delete_one({"id": id})
-#     if result.deleted_count == 0:
-#         raise HTTPException(status_code=404, detail="Schema not found")
-
-#     return {"message": "Schema deleted"}
+    # Content changed → perform update
+    updated = await collection.update_one(
+        {"_id": oid},
+        {
+            "$set": {
+                "content": update.content,
+                "content_hash": new_hash,
+                "updated_at": datetime.now(timezone.utc),
+            }
+        },
+    )
+    return UpdateResponse(
+        updated=True,
+        schema=SchemaDefinition(**updated),
+        message="Schema updated.",
+    )
