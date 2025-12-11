@@ -10,9 +10,11 @@ _schemas_collection: AsyncIOMotorCollection | None = None
 
 async def connect_to_mongo():
     global client, database, _schemas_collection
+
     client = AsyncIOMotorClient(settings.MONGO_URI)
-    database = client.jsoned_db
-    _schemas_collection = database.schemas
+    database = client[settings.MONGO_DB_NAME]
+    _schemas_collection = database[settings.SCHEMAS_COLLECTION_NAME]
+
     await _schemas_collection.create_index("title", unique=True)
 
 
