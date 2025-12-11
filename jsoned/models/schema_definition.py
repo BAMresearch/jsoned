@@ -1,5 +1,4 @@
 from datetime import datetime
-from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -28,4 +27,9 @@ class SchemaDefinition(BaseModel):
     content: dict | None = Field(
         None,
         description="The actual schema content as a dictionary",
+    )
+
+    content_hash: str | None = Field(
+        None,
+        description="A stable hash of the schema content for integrity verification",
     )
