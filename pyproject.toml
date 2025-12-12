@@ -126,3 +126,4 @@ namespaces = false
 
 [tool.setuptools_scm]
 write_to = "backend/_version.py"
+

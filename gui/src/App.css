@@ -1,0 +1,132 @@
+
+/* Base container */
+.app-container {
+  min-height: 100vh;
+  padding: 20px;
+  font-family: "Segoe UI", Arial, sans-serif;
+  transition: background 0.5s ease, color 0.5s ease;
+}
+
+/* -------------------------------
+   THEMES
+-------------------------------- */
+
+/* Light Theme */
+.theme-light {
+  background: #fdfdfd;
+  color: #222;
+}
+
+/* Dark Theme */
+.theme-dark {
+  background: linear-gradient(135deg, #181818, #2c2c2c);
+  color: #eaeaea;
+}
+
+/* Vampire Theme */
+.theme-vampire {
+  background: linear-gradient(135deg, #3a003e, #8b0000);
+  color: #f8d7da;
+}
+
+/* Yellow Theme */
+.theme-yellow {
+  background: linear-gradient(135deg, #fff8dc, #fdd835);
+  color: #333;
+}
+
+/* Modern Theme */
+.theme-modern {
+  background: linear-gradient(135deg, #5a00b5, #2575fc, #6dd5fa);
+  color: #fefefe;
+}
+
+/* -------------------------------
+   SECTION STYLING
+-------------------------------- */
+.section {
+  padding: 15px;
+  margin: 20px auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  max-width: 800px;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.theme-light .section { background-color: #ffffff; color: #222; }
+.theme-dark .section { background-color: #242424; color: #eaeaea; }
+.theme-vampire .section { background-color: rgba(58, 0, 62, 0.85); color: #f8d7da; }
+.theme-yellow .section { background-color: rgba(255, 255, 255, 0.9); color: #333; }
+.theme-modern .section { background-color: rgba(255, 255, 255, 0.1); color: #fefefe; }
+
+/* -------------------------------
+   BUTTON STYLING
+-------------------------------- */
+button {
+  margin: 5px;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+button {
+  background-color: #333;
+  color: #FFD700;
+}
+
+.theme-dark button { background-color: #444; color: #eaeaea; }
+.theme-vampire button { background-color: #8b0000; color: #f8d7da; }
+.theme-yellow button { background-color: #fdd835; color: #333; }
+.theme-modern button { background-color: #ffffff; color: #2575fc; }
+
+button:hover {
+  opacity: 0.9;
+  transform: scale(1.05);
+}
+
+/* -------------------------------
+   INPUT STYLING
+-------------------------------- */
+input {
+  margin: 5px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 200px;
+}
+
+/* -------------------------------
+   CARD STYLING
+-------------------------------- */
+.schema-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  padding: 15px;
+  margin: 10px;
+  width: 250px;
+  text-align: left;
+  transition: transform 0.3s ease;
+}
+
+.theme-light .schema-card { background-color: #fff; color: #222; }
+.theme-dark .schema-card { background-color: #2c2c2c; color: #eaeaea; }
+.theme-vampire .schema-card { background-color: #8b0000; color: #f8d7da; }
+.theme-yellow .schema-card { background-color: #fff; color: #333; }
+.theme-modern .schema-card { background-color: rgba(255, 255, 255, 0.15); color: #fefefe; }
+
+.schema-card:hover { transform: translateY(-5px); }
+
+/* -------------------------------
+   RESPONSIVE DESIGN
+-------------------------------- */
+@media (max-width: 600px) {
+  .schema-list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  input { width: 100%; }
+}
