@@ -1,6 +1,12 @@
 # added
 .MyNotes/
+.MyNotes/*
 .venv_jsoned
+gui_web_svelte/
+gui_web_svelte/*
+svelte/
+svelte/*
+
 
 
 # Byte-compiled / optimized / DLL files
