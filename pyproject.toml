@@ -25,7 +25,10 @@ maintainers = [
 ]
 license = { file = "LICENSE" }
 dependencies = [
-  "pydantic~=2.10.5",
+  "inboard[fastapi]==0.56.*",
+  "pydantic>=2.0,<2.7",
+  "pydantic-settings>=2.0.3",
+  "motor>=3.3.1",
   "python-decouple",
   "structlog==24.4.0",
 ]
@@ -45,7 +48,7 @@ dev = [
 
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.
-include = ["backend/*.py", "tests/*.py"]
+include = ["jsoned/*.py", "tests/*.py"]
 exclude = [
     ".bzr",
     ".direnv",
@@ -125,4 +128,5 @@ where = ["."]
 namespaces = false
 
 [tool.setuptools_scm]
-write_to = "backend/_version.py"
+write_to = "jsoned/_version.py"
+
