@@ -5,8 +5,13 @@ from bson.errors import InvalidId
 from fastapi import APIRouter, HTTPException, Request, status
 from pymongo.errors import DuplicateKeyError
 
-from jsoned.models.content import ContentUpdate, UpdateResponse, hash_content
-from jsoned.models.schema_definition import SchemaDefinition
+from jsoned.models.schema_definition import (
+    ContentUpdate,
+    SchemaCreate,
+    SchemaDefinition,
+    UpdateResponse,
+    hash_content,
+)
 
 router = APIRouter()
 
@@ -25,20 +30,18 @@ async def get_all_schemas(request: Request):
 @router.post(
     "/add", response_model=SchemaDefinition, status_code=status.HTTP_201_CREATED
 )
-async def add_schema(request: Request, schema: SchemaDefinition):
-    if schema.content is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="`content` must not be null.",
-        )
-
+async def add_schema(request: Request, payload: SchemaCreate):
     collection = request.app.state.schemas_collection
+    now = datetime.now(timezone.utc)
 
     # Build doc to insert, excluding None fields
-    doc = schema.model_dump(exclude_none=True)
-    doc["created_at"] = datetime.now(timezone.utc)
-    doc["updated_at"] = doc["created_at"]
-    doc["content_hash"] = hash_content(schema.content)
+    doc = {
+        "title": payload.title,
+        "content": payload.content,
+        "created_at": now,
+        "updated_at": now,
+        "content_hash": hash_content(payload.content),
+    }
 
     try:
         result = await collection.insert_one(doc)
@@ -55,7 +58,7 @@ async def add_schema(request: Request, schema: SchemaDefinition):
 @router.delete("/delete/{title}", status_code=status.HTTP_200_OK)
 async def delete_schema_by_title(
     request: Request,
-    title: str | None = None,
+    title: str,
 ):
     if not title:
         raise HTTPException(
@@ -74,7 +77,7 @@ async def delete_schema_by_title(
 @router.delete("/delete/id/{id}", status_code=status.HTTP_200_OK)
 async def delete_schema_by_id(
     request: Request,
-    id: str | None = None,
+    id: str,
 ):
     collection = request.app.state.schemas_collection
     try:
@@ -109,9 +112,9 @@ async def update_schema_by_id(
     current = await collection.find_one({"_id": oid})
     if current is None:
         raise HTTPException(status_code=404, detail=f"Schema with id `{id}` not found")
-    old_hash = current.get("content_hash")
 
-    # Compute new hash
+    # hashes
+    old_hash = current.get("content_hash")
     new_hash = hash_content(update.content)
 
     # No change → skip update; return existing doc + message
@@ -124,7 +127,7 @@ async def update_schema_by_id(
         )
 
     # Content changed → perform update
-    updated = await collection.update_one(
+    updated = await collection.find_one_and_update(
         {"_id": oid},
         {
             "$set": {
@@ -133,6 +136,7 @@ async def update_schema_by_id(
                 "updated_at": datetime.now(timezone.utc),
             }
         },
+        return_document=True,
     )
     return UpdateResponse(
         updated=True,
