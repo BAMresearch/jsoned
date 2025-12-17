@@ -1,287 +1,60 @@
 # jsoned
-A full-stack application to visualize and edit entities and their relations defined in JSON Schema.
+
+A local application to visualize and edit entities and their relations defined in a JSON Schema. The architecture
+of `jsoned` is:
+
+- FastAPI (Python): backend
+- SvelteKit (JavaScript): frontend
+- MongoDB: database
+- Tauri (Rust): framework for building binaries for desktop app
 
 
+## Development
 
-***
+If you want to develop locally this package, clone the project and enter in the workspace folder:
 
-# JSONED — Full Teaching Guide
-
-> **Goal:** Learn how to build and run a full-stack app to **visualize and edit JSON Schema entities** using **FastAPI** (backend) and **React** (frontend). Includes MongoDB integration as an advanced option.
-
-***
-
-## ✅ Quick Start
-
-### 1. Clone the repository
-
-```bash
-jsoned> git clone https://github.com/BAMresearch/jsoned.git
-jsoned> cd jsoned
-jsoned> dir    # Windows
-jsoned> ls     # Linux/macOS
+```sh
+git clone https://github.com/BAMresearch/jsoned.git
+cd jsoned
 ```
 
-***
+Create a virtual environment (you can use Python>3.10) in your workspace:
 
-### 2. Backend Setup (Terminal 1)
-
-```bash
-jsoned> cd backend
-backend> python -m venv venv
-backend> source venv/bin/activate    # Windows: venv\Scripts\activate
-
-backend(venv)> pip install -r requirements.txt
-
-backend(venv)> uvicorn main:app --reload
-# or specify host/port
-backend(venv)> uvicorn main:app --reload --host 127.0.0.1 --port 8000
+```sh
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
-#### If using `pyproject.toml`:
+We recommend using [`uv`](https://docs.astral.sh/uv/) for installing the dependencies:
 
-```bash
-# using install -e .
-pip install -e .
-pip install -e .[dev]  #when dev is defined
-
-# Check which tool is used (Poetry or Pipenv)
-
-# If Poetry:
-backend> pip install poetry
-backend> poetry install
-backend> poetry shell
-
-# If Pipenv:
-backend> pip install pipenv
-backend> pipenv install
-backend> pipenv shell
-
-# If standard PEP 621:
-backend> pip install .
+```sh
+uv sync
 ```
 
-**Check:** Open `http://127.0.0.1:8000/docs` → FastAPI docs should appear.
+### Run the app
 
-***
+In order to run the app, you need to follow the instructions for different services. Using `uvicorn` you can launch the FastAPI app:
 
-### 3. Frontend Setup (Terminal 2)
-
-**Create React app:**
-
-```bash
-jsoned> npx create-react-app gui
-jsoned> cd gui
-gui> dir    # Windows
-gui> ls     # Linux/macOS
+```sh
+cd jsoned/
+uvicorn main:app --reload
 ```
 
-**Install Axios for API calls:**
+The SwaggerUI will help you understand the implemented endpoints.
 
-```bash
-gui> npm install axios
-gui> npm audit      #Run audit details
-gui> npm audit fix  #Fix automatically
+#### MongoDB Compass
 
+Go to [MongoDB](https://www.mongodb.com/) and install [MongoDB Community Edition](https://www.mongodb.com/docs/manual/administration/install-community/?operating-system=linux&linux-distribution=ubuntu&linux-package=default&search-linux=with-search-linux) and [MongoDB Compass](https://www.mongodb.com/try/download/compass).
+
+Once the installation is finished, launch MongoDB Compass and start a connection with URI `mongodb://localhost:27017`. Name it `json_db`. You can also create a new collection and call it `schemas`. The URI and names of the database and collection are defined in `jsoned/settings.py`.
+
+#### NodeJS
+
+We use `npm` to manage the frontend dependencies. Go to [NodeJS](https://nodejs.org/en) and install `npm`.
+
+You can install and run the SvelteKit server:
+
+```sh
+cd gui/
+npm run dev
 ```
-
-**Run frontend:**
-
-```bash
-gui> npm start   # Standard start command
-
-#OR
-gui> npm run dev # Alias for developer mode
-
-INFO:To npm run dev DO THE FOLLOWING:
-    in package.json add ->> "dev": "react-scripts start":
-
-            "scripts": {
-            "start": "react-scripts start",
-            "build": "react-scripts build",
-            "test": "react-scripts test",
-            "eject": "react-scripts eject",
-            "dev": "react-scripts start"
-            }
-
-```
-
-✔ **Difference?**
-
-*   `npm start` → Runs the default development server.
-*   `npm run dev` → Custom alias (same behavior here).
-
-📂 **Where are App.js and App.css?**
-
-*   Located in `gui/src/`:
-    *   `App.js` → Main React component
-    *   `App.css` → Styling for App.js
-
-✅ **Check:**
-
-*   `http://localhost:3000`
-
-***
-
-## ✅ Architecture & Diagrams
-
-### **High-Level Architecture**
-
-    +-------------------+        HTTP API        +-------------------+        MongoDB
-    |   React Frontend  | <--------------------> |     FastAPI       | <----> | Database |
-    |  (Components/UI)  |                       |  (Routes/Models)  |        | Schemas  |
-    +-------------------+                       +-------------------+        +----------+
-
-***
-
-### **Detailed Component Flow**
-
-    [User Action] --> [React Component] --> [Axios API Call] --> [FastAPI Endpoint]
-           |                                                      |
-           |                                                      v
-           |                                              [MongoDB Query]
-           |                                                      |
-           v                                                      v
-    [Updated State] <-- [JSON Response] <-- [FastAPI Response] <-- [Database Result]
-
-***
-
-### **Backend Layer Diagram**
-
-    +-------------------+
-    |   main.py         |  -> Routes & Controllers
-    +-------------------+
-    |   models.py       |  -> Pydantic Schemas
-    +-------------------+
-    |   database.py     |  -> MongoDB Connection
-    +-------------------+
-
-***
-
-### **Frontend Folder Structure**
-
-    gui/
-    ├── public/
-    ├── src/
-    │   ├── App.js        # Main React Component
-    │   ├── api.js        # Axios API Calls
-    │   ├── components/   # UI Components
-    │   └── App.css       # Styling
-
-***
-
-### **Request Lifecycle**
-
-    User Click -> React -> Axios -> FastAPI -> MongoDB -> Response -> React State Update
-
-***
-
-### **MVC Mapping**
-
-    Model      -> Pydantic schemas (datamodel.py, model.py)
-    View       -> React components (App.jsx)
-    Controller -> FastAPI routes (main.py)
-
-***
-
-### **Sequence Flow (Add Version)**
-
-    User -> React -> FastAPI -> In-memory DB
-     |       |        |           |
-     | Click Add      |           |
-     |---------------> |           |
-     |             POST /version   |
-     |                           -> Append SchemaDefinition
-
-***
-
-### **UML Class Diagram**
-
-    +-------------------------+
-    |   SchemaDefinition      |
-    +-------------------------+
-    | id: str                |
-    | name: str              |
-    | version: str           |
-    | content: dict          |
-    | updated_at: datetime   |
-    +-------------------------+
-
-    +-------------------------+
-    |     UpdateSchema        |
-    +-------------------------+
-    | name: str | None       |
-    | version: str | None    |
-    +-------------------------+
-
-***
-
-### **MongoDB Integration Flow**
-
-    +-----------+        Axios HTTP        +-----------+        PyMongo        +-----------+
-    |  React    |  --->  POST /version  -> |  FastAPI  |  --->  Insert Doc  -> | MongoDB   |
-    | Frontend  |        GET /version      | Backend   |        Query Docs     | Database  |
-    +-----------+        PATCH /version    +-----------+        Return JSON    +-----------+
-
-***
-
-## ✅ MongoDB Atlas Setup (Optional Advanced)
-
-1.  Create account at <https://www.mongodb.com/atlas>
-2.  Create cluster and get connection string
-3.  Add `.env` in `backend`:
-
-<!---->
-
-    MONGO_URI="your-atlas-uri"
-
-4.  Use `pymongo` in `database.py`:
-
-```python
-from pymongo import MongoClient
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
-client = MongoClient(os.getenv("MONGO_URI"))
-db = client.jsoned_db
-```
-
-***
-
-## ✅ API Endpoints
-
-    GET    /version
-    POST   /version
-    PUT    /version/{id}
-    PATCH  /version/{id}
-    DELETE /version/{id}
-
-***
-
-## ✅ Best Practices
-
-*   Use `.env` for secrets
-*   Enable CORS for frontend
-*   Keep code modular
-
-***
-
-## ✅ Troubleshooting
-
-*   **CORS errors**: Add `CORSMiddleware`
-*   **npm issues**: Delete `node_modules` → `npm install`
-*   **Port conflicts**: Change port in `uvicorn` or `npm run dev`
-
-***
-
-
-
-## ✅ Resources
-
-*   <https://fastapi.tiangolo.com/>
-*   <https://docs.pydantic.dev/>
-*   <https://react.dev/>
-*   <https://www.mongodb.com/docs/>
-
-***
